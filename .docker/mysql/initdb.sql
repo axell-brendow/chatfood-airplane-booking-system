@@ -1,0 +1,2 @@
+CREATE DATABASE IF NOT EXISTS booking_system;
+CREATE DATABASE IF NOT EXISTS booking_system_test;
