@@ -89,7 +89,6 @@ class MultipleBookingControllerTest extends TestCase
             'user_id' => $user->id,
             'num_seats' => 4
         ]);
-        echo $response->content();
         $response->assertStatus(200);
 
         $seatsNames = array_map(function ($booking) {
@@ -138,7 +137,6 @@ class MultipleBookingControllerTest extends TestCase
             'user_id' => $user->id,
             'num_seats' => 2
         ]);
-        echo $response->content();
         $response->assertStatus(200);
 
         $seatsNames = array_map(function ($booking) {
