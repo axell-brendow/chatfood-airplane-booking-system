@@ -24,7 +24,7 @@ class SeatSeeder extends Seeder
             $row = intdiv($i, $num_columns);
             $column = $i % $num_columns;
             Seat::create([
-                'name' => "{$letters[$column]}{$row}",
+                'name' => "{$letters[$column]}" . ($row + 1),
                 'aircraft_id' => $aircraft->id
             ]);
         }
