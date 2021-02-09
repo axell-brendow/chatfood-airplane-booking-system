@@ -1,0 +1,64 @@
+version: "3.1"
+
+networks:
+  booking_system:
+    driver: bridge
+
+volumes:
+  booking_system_data:
+    driver: local
+
+services:
+  db:
+    image: mysql:5.7
+    command: --innodb-use-native-aio=0
+    container_name: booking_system_db
+    restart: unless-stopped
+    ports:
+      - "33006:3306"
+    environment:
+      - MYSQL_USER=root
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - booking_system_data:/var/lib/mysql
+      - ./.docker/mysql:/docker-entrypoint-initdb.d
+    networks:
+      - booking_system
+
+  redis:
+    image: redis:alpine3.12
+    container_name: booking_system_redis
+    restart: unless-stopped
+    networks:
+      - booking_system
+
+  app:
+    build: .
+    container_name: booking_system_app
+    restart: unless-stopped
+    environment:
+      - _DB_HOST=db
+      - _DB_DATABASE=booking_system
+      - _TEST_DB_DATABASE=booking_system_test
+      - _DB_USERNAME=root
+      - _DB_PASSWORD=root
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - db
+      - redis
+    networks:
+      - booking_system
+
+  web:
+    build: ./.docker/nginx
+    container_name: booking_system_web
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - app
+    networks:
+      - booking_system
