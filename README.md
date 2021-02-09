@@ -15,7 +15,7 @@ Search for the line `RUN usermod -u 1001 www-data` and change 1001 ranging from 
 ```sh
 docker-compose up
 docker-compose exec app sh # Enter inside the container and run `php artisan test`
-``
+```
 
 ---
 
