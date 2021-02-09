@@ -26,7 +26,7 @@ class MultipleBookingService
 
     private function getSeatName(int $row, int $column): string
     {
-        return "{$this->letters[$column]}{$row}";
+        return "{$this->letters[$column]}" . ($row + 1);
     }
 
     private function getReservedSeatsNames(): array
@@ -46,7 +46,7 @@ class MultipleBookingService
             for ($j = 0; $j < $this->numColumns; $j++)
             {
                 $seatName = $this->getSeatName($i, $j);
-                $matrix[$i][$j] = in_array($seatName, $reservedSeatsNames) ? 'X' : $seatName;
+                $this->matrix[$i][$j] = in_array($seatName, $reservedSeatsNames) ? 'X' : $seatName;
             }
         }
     }
@@ -56,11 +56,7 @@ class MultipleBookingService
         $reserved = 0;
         $startColumn = 0;
 
-        for (
-            $j = 0, $remaining = $mid;
-            $j < $mid && $remaining >= $numSeats && $reserved < $numSeats;
-            $j++, $remaining--
-        )
+        for ($j = 0; $j < $mid && $reserved < $numSeats; $j++)
         {
             if ($this->matrix[$row][$j] == 'X')
             {
@@ -78,11 +74,7 @@ class MultipleBookingService
         $reserved = 0;
         $endColumn = $this->numColumns - 1;
 
-        for (
-            $j = $this->numColumns - 1, $remaining = $this->numColumns - $mid;
-            $j >= $mid && $remaining >= $numSeats && $reserved < $numSeats;
-            $j--, $remaining--
-        )
+        for ($j = $this->numColumns - 1; $j >= $mid && $reserved < $numSeats; $j--)
         {
             if ($this->matrix[$row][$j] == 'X')
             {
@@ -103,7 +95,7 @@ class MultipleBookingService
 
         for ($i = $start; $i <= $end; $i++)
         {
-            $seatsNames = $this->getSeatName($row, $i);
+            array_push($seatsNames, $this->getSeatName($row, $i));
         }
 
         return $seatsNames;
@@ -118,30 +110,33 @@ class MultipleBookingService
         $startAndEndColumn = null;
         $i = 0;
 
-        for (; $i < $this->aircraft->rows && !$startAndEndColumn; $i++)
+        for (; $i < $this->aircraft->rows && $startAndEndColumn == null; $i++)
         {
             $startAndEndColumn = $this->bookOnLeftRow($i, $mid, $numSeats);
             if ($startAndEndColumn == null)
                 $startAndEndColumn = $this->bookOnRightRow($i, $mid, $numSeats);
         }
 
-        return $this->getSeatsNames($i, $startAndEndColumn);
+        return $startAndEndColumn == null ? null : $this->getSeatsNames($i - 1, $startAndEndColumn);
     }
 
     private function bookSeats($seatsNames): array
     {
-        $seatsIds = $this->flight->bookings()
-            ->join('seats', 'seats.id', '=', 'bookings.seat_id')
-            ->whereIn('seats.name', $seatsNames)
-            ->select('seats.id')->get()->pluck('id')->toArray();
+        $seatsIds = $this->aircraft->seats
+            ->whereIn('name', $seatsNames)
+            ->pluck('id')->toArray();
 
-        return array_map(function ($seatId) {
+        $bookingsIds = array_map(function ($seatId) {
             return Booking::create([
                 'user_id' => $this->user->id,
                 'flight_id' => $this->flight->id,
                 'seat_id' => $seatId,
-            ]);
+            ])->id;
         }, $seatsIds);
+
+        return Booking::with('seat')
+            ->whereIn('id', $bookingsIds)
+            ->get()->toArray();
     }
 
     private function tryToBookRectangleOnLeftSide(
@@ -166,23 +161,23 @@ class MultipleBookingService
 
     private function tryToBalanceAcrossRowsOnLeftSide(array &$seatsNames, int $mid, int $numSeats): bool
     {
-        $numOfNecessaryRows = intdiv($numSeats, $mid);
+        $numOfNecessaryRows = ceil($numSeats / $mid);
         $numColumns = $numSeats;
         if ($numSeats == 4) $numColumns = 2;
         else if ($numSeats > 4) $numColumns = 3;
 
         $i = 0;
         $stopPoint = [];
-        while ($i + $numOfNecessaryRows <= $this->aircraft->rows && $stopPoint != null)
+        while ($i + $numOfNecessaryRows <= $this->aircraft->rows && $stopPoint !== null)
         {
             $stopPoint = $this->tryToBookRectangleOnLeftSide(
                 $i, 0, $numOfNecessaryRows, $numColumns, $numSeats, $seatsNames
             );
-            if ($stopPoint != null) $i = $stopPoint[0] + 1;
+            if ($stopPoint !== null) $i = $stopPoint[0] + 1;
         }
 
-        if ($stopPoint != null) $seatsNames = [];
-        return $stopPoint == null;
+        if ($stopPoint !== null) $seatsNames = [];
+        return $stopPoint === null;
     }
 
     private function tryToBookRectangleOnRightSide(
@@ -207,23 +202,28 @@ class MultipleBookingService
 
     private function tryToBalanceAcrossRowsOnRightSide(array &$seatsNames, int $mid, int $numSeats): bool
     {
-        $numOfNecessaryRows = intdiv($numSeats, $mid);
+        $numOfNecessaryRows = ceil($numSeats / $mid);
         $numColumns = $numSeats;
         if ($numSeats == 4) $numColumns = 2;
         else if ($numSeats > 4) $numColumns = 3;
 
         $i = 0;
         $stopPoint = [];
-        while ($i + $numOfNecessaryRows <= $this->aircraft->rows && $stopPoint != null)
+        while ($i + $numOfNecessaryRows <= $this->aircraft->rows && $stopPoint !== null)
         {
             $stopPoint = $this->tryToBookRectangleOnRightSide(
-                $i, $this->numColumns, $numOfNecessaryRows, $numColumns, $numSeats, $seatsNames
+                $i,
+                $this->numColumns - 1,
+                $numOfNecessaryRows,
+                $numColumns,
+                $numSeats,
+                $seatsNames
             );
-            if ($stopPoint != null) $i = $stopPoint[0] + 1;
+            if ($stopPoint !== null) $i = $stopPoint[0] + 1;
         }
 
-        if ($stopPoint != null) $seatsNames = [];
-        return $stopPoint == null;
+        if ($stopPoint !== null) $seatsNames = [];
+        return $stopPoint === null;
     }
 
     private function tryToBalanceAcrossRows(int $numSeats): ?array
@@ -246,15 +246,15 @@ class MultipleBookingService
         $i = 0;
         $stopPoint = [];
         $seatsNames = [];
-        while ($i + $numOfNecessaryRows <= $this->aircraft->rows && $stopPoint != null)
+        while ($i + $numOfNecessaryRows <= $this->aircraft->rows && $stopPoint !== null)
         {
             $stopPoint = $this->tryToBookRectangleOnLeftSide(
                 $i, $mid - 1, $numOfNecessaryRows, $numColumns, $numSeats, $seatsNames
             );
-            if ($stopPoint != null) $i = $stopPoint[0] + 1;
+            if ($stopPoint !== null) $i = $stopPoint[0] + 1;
         }
 
-        return $stopPoint == null ? $seatsNames : null;
+        return $stopPoint === null ? $seatsNames : null;
     }
 
     private function tryToBookRandomly(int $numSeats): ?array
