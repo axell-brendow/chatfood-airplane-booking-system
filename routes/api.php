@@ -23,6 +23,6 @@ Route::group(['namespace' => 'App\Http\Controllers\Api'], function () {
     Route::resource('bookings', 'BookingController', ['except' => ['create', 'edit']]);
     Route::resource('flights', 'FlightController', ['except' => ['create', 'edit']]);
     Route::resource('seats', 'SeatController', ['except' => ['create', 'edit']]);
-    Route::post('multiple_bookings', 'Api\MultipleBookingController@book')
+    Route::post('multiple_bookings', 'MultipleBookingController@book')
         ->name('multiple_bookings.book');
 });
