@@ -1,3 +1,24 @@
+# Backend test for ChatFood
+
+## How to use ?
+
+```sh
+docker-compose up
+```
+
+You may need to change the Dockerfile to be able to edit the code from your editor.
+
+Search for the line `RUN usermod -u 1001 www-data` and change 1001 ranging from 1000 to 1005 to see if you will be able to edit the files.
+
+## Running tests
+
+```sh
+docker-compose up
+docker-compose exec app sh # Enter inside the container and run `php artisan test`
+``
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400"></a></p>
 
 <p align="center">
